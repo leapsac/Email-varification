@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VERITAS — Email Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050508;
+            --surface: #0d0d14;
+            --surface2: #13131e;
+            --border: rgba(255, 255, 255, 0.06);
+            --border-bright: rgba(255, 255, 255, 0.12);
+            --green: #00f5a0;
+            --green-dim: rgba(0, 245, 160, 0.12);
+            --blue: #00d4ff;
+            --blue-dim: rgba(0, 212, 255, 0.12);
+            --red: #ff3d5a;
+            --red-dim: rgba(255, 61, 90, 0.10);
+            --yellow: #ffd166;
+            --text: #e8e8f0;
+            --text-muted: rgba(232, 232, 240, 0.45);
+            --accent: var(--green);
+            --accent-dim: var(--green-dim);
+            --card-accent: var(--green);
+            --card-accent-rgb: 0, 245, 160;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Syne', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+            cursor: crosshair;
+        }
+
+        /* Background Effects */
+        .bg-effects {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            animation: orbPulse 8s infinite alternate ease-in-out;
+        }
+
+        .orb-1 {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 900px;
+            height: 900px;
+            background: radial-gradient(circle, #00f5a0 0%, #00d4ff 100%);
+            opacity: 0.08;
+            filter: blur(120px);
+            animation: orbPulse 10s infinite alternate ease-in-out;
+        }
+
+        .orb-2 {
+            top: -100px;
+            left: -100px;
+            width: 400px;
+            height: 400px;
+            background: #8b5cf6;
+            opacity: 0.05;
+            filter: blur(80px);
+        }
+
+        .orb-3 {
+            position: absolute;
+            bottom: -100px;
+            right: -100px;
+            width: 400px;
+            height: 400px;
+            background: #0066ff;
+            opacity: 0.05;
+            filter: blur(80px);
+            border-radius: 50%;
+        }
+
+        @keyframes orbPulse {
+            from { transform: translate(-50%, -50%) scale(1); }
+            to { transform: translate(-50%, -50%) scale(1.15); }
+        }
+
+        .noise {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3%3Ffilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.02;
+        }
+
+        .grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.3;
+            animation: float 10s infinite linear;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(100vh) scale(0); opacity: 0; }
+            50% { opacity: 0.3; }
+            100% { transform: translateY(-100px) scale(1); opacity: 0; }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a1a2e;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 10px;
+        }
+
+        /* Typography */
+        h1, h2, h3 { font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em; }
+        .mono { font-family: 'DM Mono', monospace; }
+
+        /* Layout Containers */
+        .screen {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .hidden { display: none; opacity: 0; pointer-events: none; }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: slideUpFade 0.6s ease forwards;
+        }
+
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header h1 { font-size: 3.5rem; color: #fff; margin-bottom: 0.5rem; text-shadow: 0 0 80px rgba(0,245,160,0.3); letter-spacing: 0.2em; }
+        
+        .live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(0, 245, 160, 0.05);
+            padding: 0.4rem 0.8rem;
+            border-radius: 100px;
+            border: 1px solid rgba(0, 245, 160, 0.1);
+            font-family: 'DM Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--green);
+            margin-bottom: 1rem;
+        }
+
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--green);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--green);
+            animation: blink 1.5s infinite;
+            position: relative;
+        }
+
+        .live-dot::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            border: 1px solid var(--green);
+            border-radius: 50%;
+            animation: ringPulse 2s infinite;
+        }
+
+        @keyframes ringPulse {
+            0% { width: 100%; height: 100%; opacity: 1; }
+            100% { width: 300%; height: 300%; opacity: 0; }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .header-line {
+            width: 200px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            margin: 1rem auto;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-line::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, #fff, transparent);
+            animation: scanLine 3s infinite linear;
+        }
+
+        @keyframes scanLine {
+            from { left: -100%; }
+            to { left: 100%; }
+        }
+
+        /* Mode Selection */
+        .mode-container {
+            display: flex;
+            gap: 2rem;
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        .mode-card {
+            flex: 1;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .mode-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.05), transparent);
+            transform: rotate(45deg);
+            transition: 0.5s;
+            pointer-events: none;
+        }
+
+        .mode-card:hover::before {
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            from { transform: rotate(45deg) translateX(-100%); }
+            to { transform: rotate(45deg) translateX(100%); }
+        }
+
+        .mode-card::after {
+            content: '';
+            position: absolute;
+            top: -1px; left: -1px; right: -1px; bottom: -1px;
+            background: conic-gradient(from 0deg, transparent, var(--card-accent), transparent);
+            border-radius: 24px;
+            z-index: -1;
+            animation: borderRotate 4s linear infinite;
+            opacity: 0.3;
+        }
+
+        @keyframes borderRotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .mode-card:hover {
+            transform: translateY(-2px) scale(1.03);
+            border-color: var(--card-accent);
+            box-shadow: 0 0 60px rgba(var(--card-accent-rgb), 0.2);
+        }
+
+        .mode-card.deep:hover { box-shadow: 0 0 60px rgba(0, 245, 160, 0.2); }
+        .mode-card.quick:hover { box-shadow: 0 0 60px rgba(0, 212, 255, 0.2); }
+
+        .mode-icon {
+            width: 64px;
+            height: 64px;
+            color: var(--card-accent);
+            margin-bottom: 1rem;
+            animation: iconFloat 3s infinite ease-in-out;
+        }
+
+        @keyframes iconFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+
+        .mode-card h2 { font-size: 1.5rem; color: #fff; font-variant-numeric: tabular-nums; }
+        .mode-card .subtitle { font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--card-accent); text-transform: uppercase; }
+        .mode-card .desc { font-size: 0.9rem; color: var(--text-muted); line-height: 1.6; }
+
+        /* Verification Screen */
+        .verify-container {
+            max-width: 1000px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 2.5rem;
+            padding: 4rem 0;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .mode-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent);
+        }
+
+        .back-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 0.5rem 1rem;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .back-btn:hover { border-color: var(--text); color: var(--text); }
+
+        /* Upload Zone */
+        .upload-zone {
+            background: linear-gradient(45deg, #0d0d14, #111120);
+            background-size: 200% 200%;
+            animation: gradShift 4s infinite alternate;
+            border: 2px dashed var(--border);
+            border-radius: 20px;
+            padding: 4rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        @keyframes gradShift {
+            from { background-position: 0% 0%; }
+            to { background-position: 100% 100%; }
+        }
+
+        .upload-zone::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border: 2px dashed var(--accent);
+            border-radius: 20px;
+            pointer-events: none;
+            animation: dashMove 20s linear infinite;
+            opacity: 0.3;
+        }
+
+        @keyframes dashMove {
+            from { stroke-dashoffset: 0; }
+            to { stroke-dashoffset: 1000; }
+        }
+
+        .upload-zone.drag-over {
+            border-color: var(--accent);
+            box-shadow: 0 0 30px var(--accent-dim);
+            background: rgba(255,255,255,0.02);
+        }
+
+        .upload-zone h3 { font-size: 1.25rem; margin-bottom: 0.5rem; }
+        .upload-zone p { color: var(--text-muted); font-size: 0.9rem; }
+
+        .file-info {
+            margin-top: 2rem;
+            display: none;
+        }
+
+        .file-info .name { font-family: 'DM Mono', monospace; color: var(--accent); font-size: 1rem; margin-bottom: 0.5rem; }
+        .file-info .count { font-size: 0.8rem; color: var(--text-muted); }
+
+        .start-btn {
+            margin-top: 2rem;
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 1rem 2.5rem;
+            border-radius: 12px;
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: none;
+        }
+
+        .start-btn:hover { transform: scale(1.02); box-shadow: 0 0 30px var(--accent-dim); filter: brightness(1.1); }
+
+        /* Stats Bar */
+        .stats-bar {
+            display: none;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+        }
+
+        .stat-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-top: 2px solid var(--border);
+            padding: 1.5rem;
+            border-radius: 16px;
+            text-align: left;
+            animation: slideUpFade 0.4s ease forwards;
+            transition: transform 0.2s ease;
+            cursor: pointer;
+        }
+
+        .stat-card:hover { transform: translateY(-2px); }
+        .stat-card.total { border-top-color: #fff; }
+        .stat-card.valid { border-top-color: var(--green); }
+        .stat-card.invalid { border-top-color: var(--red); }
+        .stat-card.rate { border-top-color: var(--accent); }
+
+        .stat-card .label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem; font-weight: 600; }
+        .stat-card .value { font-family: 'DM Mono', monospace; font-size: 1.75rem; font-weight: 500; }
+        
+        .pulse-line {
+            width: 20px;
+            height: 2px;
+            background: var(--accent);
+            margin-top: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pulse-line::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: #fff;
+            animation: pulseScan 2s infinite;
+        }
+
+        @keyframes pulseScan {
+            from { left: -100%; }
+            to { left: 100%; }
+        }
+
+        /* Progress Section */
+        .progress-section {
+            display: none;
+            flex-direction: column;
+            gap: 1rem;
+            text-align: center;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: var(--surface2);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 15px var(--accent);
+            position: relative;
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            right: -3px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 8px;
+            height: 8px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 15px #fff;
+            animation: leadingGlow 1s infinite alternate;
+        }
+
+        @keyframes leadingGlow {
+            from { box-shadow: 0 0 5px #fff; }
+            to { box-shadow: 0 0 20px #fff; }
+        }
+
+        .matrix-bg {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            font-family: monospace;
+            font-size: 10px;
+            color: rgba(0, 245, 160, 0.08);
+            overflow: hidden;
+            pointer-events: none;
+            z-index: -1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.5;
+        }
+
+        .progress-info { font-family: 'DM Mono', monospace; font-size: 0.9rem; color: var(--text); }
+        .key-info { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 0.6rem 1.5rem;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .btn-ghost:hover { border-color: var(--text); color: var(--text); }
+
+        /* Results Table */
+        .results-container {
+            display: none;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .table-wrapper {
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: var(--surface);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            padding: 1.25rem 1.5rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: linear-gradient(90deg, var(--surface2), var(--surface), var(--surface2));
+            background-size: 200% 100%;
+            animation: shimmerHeader 5s infinite linear;
+            z-index: 5;
+        }
+
+        @keyframes shimmerHeader {
+            from { background-position: 200% 0; }
+            to { background-position: -200% 0; }
+        }
+
+        td {
+            padding: 1rem 1.5rem;
+            font-size: 0.9rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr {
+            animation: fadeSlideIn 0.4s ease forwards;
+            opacity: 0;
+        }
+
+        tr:nth-child(even) {
+            background: rgba(255,255,255,0.01);
+        }
+
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        tr.valid { border-left: 3px solid var(--green); animation: validFlash 1s ease forwards; }
+        tr.invalid { border-left: 3px solid var(--red); animation: invalidFlash 1s ease forwards; }
+        tr.unknown { border-left: 3px solid var(--yellow); background: rgba(255, 209, 102, 0.04); }
+        tr.failed { border-left: 3px solid #666; background: rgba(255, 255, 255, 0.02); }
+
+        @keyframes validFlash {
+            0% { background: rgba(0, 245, 160, 0.4); }
+            100% { background: rgba(0, 245, 160, 0.04); }
+        }
+
+        @keyframes invalidFlash {
+            0% { background: rgba(255, 61, 90, 0.4); }
+            100% { background: rgba(255, 61, 90, 0.04); }
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 100px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            box-shadow: 0 0 12px currentColor;
+        }
+
+        .status-badge.valid { background: rgba(0, 245, 160, 0.1); color: var(--green); }
+        .status-badge.invalid { background: rgba(255, 61, 90, 0.1); color: var(--red); }
+        .status-badge.unknown { background: rgba(255, 209, 102, 0.1); color: var(--yellow); }
+        .status-badge.failed { background: rgba(255, 255, 255, 0.1); color: #aaa; }
+
+        .resp-time { font-family: 'DM Mono', monospace; color: var(--text-muted); font-size: 0.8rem; }
+
+        /* Download Section */
+        .download-section {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .download-btn {
+            background: transparent;
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            padding: 1rem 3rem;
+            border-radius: 12px;
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .download-btn::after {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%; width: 200%; height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: rotate(45deg);
+            animation: shimmer 4s infinite;
+        }
+
+        .download-btn:hover { background: var(--accent); color: #000; box-shadow: 0 0 30px var(--accent-dim); }
+        
+        .download-btn svg {
+            animation: bounceDown 2s infinite;
+        }
+
+        @keyframes bounceDown {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(3px); }
+            60% { transform: translateY(1.5px); }
+        }
+
+        button:active {
+            transform: scale(0.97) !important;
+        }
+
+        .download-info { font-size: 0.8rem; color: var(--text-muted); }
+
+        /* Limit Screen */
+        .limit-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .limit-screen h2 { font-size: 2.5rem; margin-bottom: 2rem; max-width: 600px; }
+        .countdown-container {
+            background: var(--surface);
+            padding: 2rem 4rem;
+            border-radius: 24px;
+            border: 1px solid var(--border);
+        }
+        .countdown-label { font-size: 0.8rem; color: var(--accent); text-transform: uppercase; margin-bottom: 1rem; }
+        .countdown-timer { font-family: 'DM Mono', monospace; font-size: 3.5rem; font-weight: 300; }
+
+        .pill {
+            font-size: 0.6rem;
+            padding: 0.2rem 0.6rem;
+            background: rgba(255,255,255,0.05);
+            border-radius: 100px;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            font-weight: 600;
+        }
+
+        .feature-pills {
+            display: flex;
+            gap: 0.4rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Page Load Sequence */
+        #selection-screen { opacity: 0; }
+        .header { opacity: 0; transform: translateY(20px); }
+        .header-line { opacity: 0; }
+        .live-badge { opacity: 0; }
+        .mode-card { opacity: 0; transform: scale(0.9); }
+
+        .loaded #selection-screen { opacity: 1; }
+        .loaded .header { animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) 200ms forwards; }
+        .loaded .header-line { animation: fadeIn 0.6s ease 400ms forwards; }
+        .loaded .live-badge { animation: fadeIn 0.6s ease 600ms forwards; }
+        .loaded .mode-card:nth-child(1) { animation: scaleIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 800ms forwards; }
+        .loaded .mode-card:nth-child(2) { animation: scaleIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 950ms forwards; }
+
+        @keyframes fadeIn { to { opacity: 1; } }
+        @keyframes scaleIn { to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+    <div class="bg-effects">
+        <div class="orb orb-1" id="orb-main"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+        <div class="noise"></div>
+        <div class="grid"></div>
+        <div class="particles" id="particles"></div>
+    </div>
+
+    <!-- Mode Selection Screen -->
+    <div id="selection-screen" class="screen">
+        <div class="header">
+            <div class="live-badge">
+                <div class="live-dot"></div>
+                LIVE
+            </div>
+            <h1>VERITAS</h1>
+            <p class="subtitle mono" style="color: var(--text-muted); font-size: 0.8rem; letter-spacing: 0.3em;">Email Intelligence</p>
+            <div class="header-line"></div>
+        </div>
+
+        <div class="mode-container">
+            <div class="mode-card deep" onclick="selectMode('deep')">
+                <svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                <div class="subtitle">Deep Verify</div>
+                <h2>REOON POWER</h2>
+                <p class="desc">SMTP-level verification with 99.9% accuracy. Best for cold outreach and high-stakes campaigns.</p>
+                <div class="feature-pills">
+                    <span class="pill">SMTP Check</span>
+                    <span class="pill">99% Accuracy</span>
+                    <span class="pill">80/day</span>
+                </div>
+            </div>
+            <div class="mode-card quick" onclick="selectMode('quick')">
+                <svg class="mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                <div class="subtitle">Quick Scan</div>
+                <h2>DISIFY MASS</h2>
+                <p class="desc">Unlimited instant verification. Checks DNS, MX records, and disposable email providers in bulk.</p>
+                <div class="feature-pills">
+                    <span class="pill">Unlimited</span>
+                    <span class="pill">Instant</span>
+                    <span class="pill">MX Check</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Verification Screen -->
+    <div id="verify-screen" class="screen hidden">
+        <div class="verify-container">
+            <div class="top-bar">
+                <div class="mode-indicator mono" id="mode-badge">
+                    <div class="live-dot"></div>
+                    <span>DEEP VERIFY MODE</span>
+                </div>
+                <button class="back-btn" onclick="goBack()">Back to Selection</button>
+            </div>
+
+            <div class="header" style="margin-bottom: 1rem;">
+                <h1 style="font-size: 2.5rem;">VERITAS</h1>
+                <div class="header-line"></div>
+            </div>
+
+            <div class="upload-zone" id="drop-zone">
+                <input type="file" id="file-input" accept=".csv" style="display: none;">
+                <div id="upload-prompt">
+                    <svg class="envelope-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" style="margin-bottom: 1.5rem;">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <polyline points="22,6 12,13 2,6"/>
+                    </svg>
+                    <p style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; color: #fff;">Drop your email list here</p>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">or click to browse CSV files</p>
+                </div>
+                <div class="file-info" id="file-info">
+                    <div class="name" id="filename">emails.csv</div>
+                    <div class="count" id="email-count">0 unique emails detected</div>
+                </div>
+                <button class="start-btn" id="start-btn">Start Verification</button>
+            </div>
+
+            <div class="stats-bar" id="stats-bar">
+                <div class="stat-card total">
+                    <div class="label">Total Emails</div>
+                    <div class="value" id="stat-total">0</div>
+                    <div class="pulse-line"></div>
+                </div>
+                <div class="stat-card valid">
+                    <div class="label">Valid</div>
+                    <div class="value" id="stat-valid">0</div>
+                    <div class="pulse-line"></div>
+                </div>
+                <div class="stat-card invalid">
+                    <div class="label">Invalid</div>
+                    <div class="value" id="stat-invalid">0</div>
+                    <div class="pulse-line"></div>
+                </div>
+                <div class="stat-card rate">
+                    <div class="label">Success Rate</div>
+                    <div class="value" id="stat-rate">0%</div>
+                    <div class="pulse-line"></div>
+                </div>
+            </div>
+
+            <div class="progress-section" id="progress-section">
+                <div class="progress-container">
+                    <div class="progress-bar" id="progress-bar"></div>
+                    <div class="matrix-bg" id="matrix-bg"></div>
+                </div>
+                <div class="progress-info" id="progress-text">Verifying 0 of 0 emails...</div>
+                <div class="key-info" id="key-indicator">Using Key 1 of 4</div>
+                <div class="controls">
+                    <button class="btn-ghost" id="pause-btn">Pause</button>
+                    <button class="btn-ghost" id="cancel-btn">Cancel</button>
+                </div>
+            </div>
+
+            <div class="results-container" id="results-container">
+                <div class="table-wrapper">
+                    <table id="results-table">
+                        <thead>
+                            <tr>
+                                <th>Email Address</th>
+                                <th>Status</th>
+                                <th>Response Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="download-section" id="download-section">
+                <button class="download-btn" id="download-btn">Download Results</button>
+                <div class="download-info" id="download-stats">0 valid · 0 invalid · 0 unknown</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Limit Screen -->
+    <div id="limit-screen" class="limit-screen hidden">
+        <h2>Daily limit of 80 verifications reached. Come back tomorrow.</h2>
+        <div class="countdown-container">
+            <div class="countdown-label">Resets In</div>
+            <div class="countdown-timer" id="countdown">00:00:00</div>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('load', () => {
+            document.body.classList.add('loaded');
+            createParticles();
+            createMatrixEffect();
+        });
+
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 15; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                const size = Math.random() * 3 + 3;
+                p.style.width = `${size}px`;
+                p.style.height = `${size}px`;
+                p.style.left = `${Math.random() * 100}%`;
+                p.style.background = Math.random() > 0.5 ? '#00f5a0' : '#00d4ff';
+                p.style.animationDelay = `${Math.random() * 10}s`;
+                p.style.animationDuration = `${Math.random() * 5 + 10}s`;
+                container.appendChild(p);
+            }
+        }
+
+        function createMatrixEffect() {
+            const container = document.getElementById('matrix-bg');
+            const chars = "01VERITAS";
+            let content = "";
+            for (let i = 0; i < 100; i++) {
+                content += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            container.textContent = content;
+            setInterval(() => {
+                let newContent = "";
+                for (let i = 0; i < 100; i++) {
+                    newContent += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                container.textContent = newContent;
+            }, 100);
+        }
+
+        function animateValue(id, start, end, duration, suffix = "") {
+            const obj = document.getElementById(id);
+            if (!obj) return;
+            const range = end - start;
+            if (range === 0) {
+                obj.textContent = end + suffix;
+                return;
+            }
+            let current = start;
+            const increment = end > start ? 1 : -1;
+            const stepTime = Math.abs(Math.floor(duration / Math.max(1, Math.abs(range))));
+            const timer = setInterval(() => {
+                current += increment;
+                obj.textContent = current + suffix;
+                if (current == end) clearInterval(timer);
+            }, stepTime || 10);
+        }
+
+        /**
+         * VERITAS — Core Logic
+         */
+
+        const REOON_KEYS = [
+            { key: "reJ7MwE6PHGOwviGCypCOXdjIH0GMINu", used: 0, limit: 20 },
+            { key: "LwEvZLwWC9sThe25gr4wvih9KkUY9hBz", used: 0, limit: 20 },
+            { key: "DVVAQ5EmbcAwIikSJMgbs2t7ZkzZ2s6w", used: 0, limit: 20 },
+            { key: "cengS6jqLOVhYt9iiqA6cBuIHhv9T8sx", used: 0, limit: 20 }
+        ];
+
+        const REOON_API = "/api/verify";
+
+        let state = {
+            mode: null,
+            emails: [],
+            originalData: [],
+            header: [],
+            emailCol: -1,
+            currentIndex: 0,
+            results: [],
+            isPaused: false,
+            isCancelled: false,
+            isProcessing: false,
+            stats: { total: 0, valid: 0, invalid: 0, unknown: 0, failed: 0 }
+        };
+
+        // DOM Elements
+        const selectionScreen = document.getElementById('selection-screen');
+        const verifyScreen = document.getElementById('verify-screen');
+        const modeBadge = document.getElementById('mode-badge');
+        const orbMain = document.getElementById('orb-main');
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const uploadPrompt = document.getElementById('upload-prompt');
+        const fileInfo = document.getElementById('file-info');
+        const filenameLabel = document.getElementById('filename');
+        const emailCountLabel = document.getElementById('email-count');
+        const startBtn = document.getElementById('start-btn');
+        const statsBar = document.getElementById('stats-bar');
+        const progressSection = document.getElementById('progress-section');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const keyIndicator = document.getElementById('key-indicator');
+        const pauseBtn = document.getElementById('pause-btn');
+        const cancelBtn = document.getElementById('cancel-btn');
+        const resultsContainer = document.getElementById('results-container');
+        const resultsBody = document.getElementById('results-body');
+        const downloadSection = document.getElementById('download-section');
+        const downloadBtn = document.getElementById('download-btn');
+        const downloadStats = document.getElementById('download-stats');
+        const limitScreen = document.getElementById('limit-screen');
+        const countdownTimer = document.getElementById('countdown');
+
+        // Mode Selection
+        function selectMode(mode) {
+            state.mode = mode;
+            document.documentElement.style.setProperty('--accent', mode === 'deep' ? 'var(--green)' : 'var(--blue)');
+            document.documentElement.style.setProperty('--accent-dim', mode === 'deep' ? 'var(--green-dim)' : 'var(--blue-dim)');
+            
+            modeBadge.querySelector('span').textContent = mode === 'deep' ? 'DEEP VERIFY MODE' : 'QUICK SCAN MODE';
+            modeBadge.style.color = mode === 'deep' ? 'var(--green)' : 'var(--blue)';
+            modeBadge.querySelector('.live-dot').style.background = mode === 'deep' ? 'var(--green)' : 'var(--blue)';
+            modeBadge.querySelector('.live-dot').style.boxShadow = `0 0 8px ${mode === 'deep' ? 'var(--green)' : 'var(--blue)'}`;
+
+            selectionScreen.classList.add('hidden');
+            verifyScreen.classList.remove('hidden');
+            
+            // Reset UI
+            resetUI();
+        }
+
+        function goBack() {
+            if (state.isProcessing) {
+                if (!confirm("Verification is in progress. Are you sure you want to go back?")) return;
+                state.isProcessing = false;
+            }
+            verifyScreen.classList.add('hidden');
+            selectionScreen.classList.remove('hidden');
+        }
+
+        function resetUI() {
+            uploadPrompt.style.display = 'block';
+            fileInfo.style.display = 'none';
+            startBtn.style.display = 'none';
+            statsBar.style.display = 'none';
+            progressSection.style.display = 'none';
+            resultsContainer.style.display = 'none';
+            downloadSection.style.display = 'none';
+            resultsBody.innerHTML = '';
+            state.emails = [];
+            state.results = [];
+            state.currentIndex = 0;
+        }
+
+        // CSV Parser
+        function parseCSV(text) {
+            const lines = text.split(/\r?\n/);
+            const result = [];
+            for (let line of lines) {
+                if (!line.trim()) continue;
+                const row = [];
+                let inQuotes = false;
+                let current = "";
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    if (char === '"') inQuotes = !inQuotes;
+                    else if (char === ',' && !inQuotes) {
+                        row.push(current.trim());
+                        current = "";
+                    } else current += char;
+                }
+                row.push(current.trim());
+                result.push(row);
+            }
+            return result;
+        }
+
+        // File Handling
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) handleFile(e.target.files[0]);
+        });
+
+        function handleFile(file) {
+            if (!file.name.endsWith('.csv')) { alert("Please upload a CSV file."); return; }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const rows = parseCSV(e.target.result);
+                if (rows.length < 1) return;
+
+                // Detect email column
+                let emailCol = -1;
+                for (let r = 0; r < Math.min(rows.length, 5); r++) {
+                    for (let c = 0; c < rows[r].length; c++) {
+                        if (rows[r][c].includes('@')) { emailCol = c; break; }
+                    }
+                    if (emailCol !== -1) break;
+                }
+
+                if (emailCol === -1) { alert("Could not detect email column."); return; }
+
+                const emailSet = new Set();
+                const uniqueRows = [];
+                const header = rows[0];
+                const startIdx = rows[0][emailCol].includes('@') ? 0 : 1;
+
+                for (let i = startIdx; i < rows.length; i++) {
+                    const email = rows[i][emailCol].toLowerCase().trim();
+                    if (email && !emailSet.has(email)) {
+                        emailSet.add(email);
+                        uniqueRows.push(rows[i]);
+                    }
+                }
+
+                state.emails = Array.from(emailSet);
+                state.originalData = uniqueRows;
+                state.header = header;
+                state.emailCol = emailCol;
+                state.stats.total = state.emails.length;
+
+                uploadPrompt.style.display = 'none';
+                fileInfo.style.display = 'block';
+                filenameLabel.textContent = file.name;
+                emailCountLabel.textContent = `${state.emails.length} unique emails detected`;
+                startBtn.style.display = 'inline-block';
+            };
+            reader.readAsText(file);
+        }
+
+        // Usage Tracking
+        function getUsage() {
+            const today = new Date().toISOString().split('T')[0];
+            const key = `veritas_reoon_${today}`;
+            const stored = localStorage.getItem(key);
+            if (stored) return JSON.parse(stored);
+            return { counts: [0, 0, 0, 0], total: 0 };
+        }
+
+        function updateUsage(keyIdx, increment = true) {
+            const today = new Date().toISOString().split('T')[0];
+            const storageKey = `veritas_reoon_${today}`;
+            let usage = getUsage();
+            if (increment) {
+                usage.counts[keyIdx]++;
+                usage.total++;
+            }
+            localStorage.setItem(storageKey, JSON.stringify(usage));
+            return usage;
+        }
+
+        function checkReoonLimits() {
+            const usage = getUsage();
+            if (usage.total >= 80) {
+                showLimitScreen();
+                return true;
+            }
+            return false;
+        }
+
+        function showLimitScreen() {
+            limitScreen.classList.remove('hidden');
+            updateCountdown();
+            setInterval(updateCountdown, 1000);
+        }
+
+        function updateCountdown() {
+            const now = new Date();
+            const tomorrow = new Date(now);
+            tomorrow.setHours(24, 0, 0, 0);
+            const diff = tomorrow - now;
+            if (diff <= 0) { window.location.reload(); return; }
+            const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
+            const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+            const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+            countdownTimer.textContent = `${h}:${m}:${s}`;
+        }
+
+        // Verification Logic
+        startBtn.addEventListener('click', () => {
+            if (state.mode === 'deep' && checkReoonLimits()) return;
+            startBtn.disabled = true;
+            statsBar.style.display = 'grid';
+            progressSection.style.display = 'flex';
+            resultsContainer.style.display = 'flex';
+            
+            state.isProcessing = true;
+            state.isPaused = false;
+            state.isCancelled = false;
+            state.currentIndex = 0;
+            state.results = [];
+            state.stats = { total: state.emails.length, valid: 0, invalid: 0, unknown: 0, failed: 0 };
+            resultsBody.innerHTML = '';
+            updateStatsUI();
+
+            if (state.mode === 'deep') processReoon();
+            else processDisify();
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            state.isPaused = !state.isPaused;
+            pauseBtn.textContent = state.isPaused ? "Resume" : "Pause";
+            if (!state.isPaused) processReoon();
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            state.isCancelled = true;
+            finishProcessing();
+        });
+
+        // REOON Logic
+        async function processReoon() {
+            if (state.isPaused || state.isCancelled || !state.isProcessing) return;
+
+            if (state.currentIndex >= state.emails.length) {
+                finishProcessing();
+                return;
+            }
+
+            const usage = getUsage();
+            let keyIdx = -1;
+            for (let i = 0; i < usage.counts.length; i++) {
+                if (usage.counts[i] < 20) { keyIdx = i; break; }
+            }
+
+            if (keyIdx === -1) { showLimitScreen(); return; }
+
+            keyIndicator.textContent = `Using Key ${keyIdx + 1} of 4`;
+            const email = state.emails[state.currentIndex];
+            const startTime = performance.now();
+
+            try {
+                const url = `${REOON_API}?email=${encodeURIComponent(email)}&key=${REOON_KEYS[keyIdx].key}`;                const response = await fetch(url);
+                const data = await response.json();
+                const endTime = performance.now();
+                const respTime = Math.round(endTime - startTime);
+
+                let status = 'INVALID';
+                if (data.is_safe_to_send === true) status = 'VALID';
+                else if (data.status === 'unknown') status = 'UNKNOWN';
+
+                if (status !== 'UNKNOWN') updateUsage(keyIdx);
+
+                state.results.push({ email, status, respTime });
+                if (status === 'VALID') state.stats.valid++;
+                else if (status === 'INVALID') state.stats.invalid++;
+                else if (status === 'UNKNOWN') state.stats.unknown++;
+
+                addTableRow(email, status, respTime);
+                updateProgressUI();
+                updateStatsUI();
+
+            } catch (error) {
+                console.error(error);
+                // Retry once
+                try {
+                    await new Promise(r => setTimeout(r, 2000));
+                    const url = `${REOON_API}?email=${encodeURIComponent(email)}&key=${REOON_KEYS[keyIdx].key}`;
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    let status = 'INVALID';
+                    if (data.is_safe_to_send === true) status = 'VALID';
+                    else if (data.status === 'unknown') status = 'UNKNOWN';
+                    state.results.push({ email, status, respTime: 0 });
+                    if (status === 'VALID') state.stats.valid++;
+                    else if (status === 'INVALID') state.stats.invalid++;
+                    addTableRow(email, status, 0);
+                } catch (e) {
+                    state.stats.failed++;
+                    state.results.push({ email, status: 'FAILED', respTime: 0 });
+                    addTableRow(email, 'FAILED', 0);
+                }
+                updateProgressUI();
+                updateStatsUI();
+            }
+
+            state.currentIndex++;
+            setTimeout(processReoon, 500);
+        }
+
+        // DISIFY Logic
+        async function processDisify() {
+            progressText.textContent = "Connecting to Disify Mass API...";
+            keyIndicator.style.display = 'none';
+            
+            try {
+                const emailList = state.emails.join(',');
+                const massUrl = `https://disify.com/api/email/${emailList}/mass`;
+                const response = await fetch(massUrl);
+                const data = await response.json();
+                const session = data.session;
+
+                progressText.textContent = "Processing your list... (3s)";
+                progressBar.style.width = "50%";
+                
+                await new Promise(r => setTimeout(r, 3000));
+
+                progressText.textContent = "Fetching results...";
+                const viewUrl = `https://disify.com/api/view/${session}?separate`;
+                const viewResponse = await fetch(viewUrl);
+                const validEmailsText = await viewResponse.text();
+                const validEmails = validEmailsText.split(',').map(e => e.trim().toLowerCase());
+
+                state.results = state.emails.map(email => {
+                    const isValid = validEmails.includes(email.toLowerCase());
+                    const status = isValid ? 'VALID' : 'INVALID';
+                    if (isValid) state.stats.valid++;
+                    else state.stats.invalid++;
+                    return { email, status, respTime: 0 };
+                });
+
+                state.results.forEach(res => addTableRow(res.email, res.status, 0));
+                state.currentIndex = state.emails.length;
+                updateProgressUI();
+                updateStatsUI();
+                finishProcessing();
+
+            } catch (error) {
+                console.error(error);
+                alert("Disify API Error. Please try again.");
+                state.isProcessing = false;
+                startBtn.disabled = false;
+            }
+        }
+
+        function addTableRow(email, status, time) {
+            const row = document.createElement('tr');
+            row.className = status.toLowerCase();
+            row.innerHTML = `
+                <td>${email}</td>
+                <td><span class="status-badge ${status.toLowerCase()}">${status}</span></td>
+                <td class="resp-time">${time > 0 ? time + 'ms' : '—'}</td>
+            `;
+            resultsBody.insertBefore(row, resultsBody.firstChild);
+        }
+
+        function updateProgressUI() {
+            const percent = (state.currentIndex / state.emails.length) * 100;
+            progressBar.style.width = `${percent}%`;
+            progressText.textContent = `Verifying ${state.currentIndex} of ${state.emails.length} emails...`;
+        }
+
+        function updateStatsUI() {
+            const oldTotal = parseInt(document.getElementById('stat-total').textContent) || 0;
+            const oldValid = parseInt(document.getElementById('stat-valid').textContent) || 0;
+            const oldInvalid = parseInt(document.getElementById('stat-invalid').textContent) || 0;
+            const oldRate = parseInt(document.getElementById('stat-rate').textContent) || 0;
+
+            if (state.stats.total !== oldTotal) animateValue('stat-total', oldTotal, state.stats.total, 500);
+            if (state.stats.valid !== oldValid) animateValue('stat-valid', oldValid, state.stats.valid, 500);
+            if (state.stats.invalid !== oldInvalid) animateValue('stat-invalid', oldInvalid, state.stats.invalid, 500);
+            
+            const rate = state.currentIndex > 0 ? Math.round(((state.stats.valid + state.stats.invalid) / state.currentIndex) * 100) : 0;
+            if (rate !== oldRate) animateValue('stat-rate', oldRate, rate, 500, "%");
+        }
+
+        function finishProcessing() {
+            state.isProcessing = false;
+            progressSection.style.display = 'none';
+            downloadSection.style.display = 'flex';
+            startBtn.disabled = false;
+            downloadStats.textContent = `${state.stats.valid} valid · ${state.stats.invalid} invalid · ${state.stats.unknown} unknown`;
+        }
+
+        downloadBtn.addEventListener('click', () => {
+            const date = new Date().toISOString().split('T')[0];
+            const filename = `veritas-results-${date}.csv`;
+            let csv = state.header.join(',') + ',Verification Status\n';
+            state.originalData.forEach((row, idx) => {
+                const res = state.results[idx];
+                csv += row.join(',') + `,${res ? res.status : 'NOT VERIFIED'}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', filename);
+            link.click();
+        });
+
+    </script>
+</body>
+</html>
+
